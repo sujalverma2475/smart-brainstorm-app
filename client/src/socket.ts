@@ -1,7 +1,7 @@
 import { io } from 'socket.io-client';
 
 const roomId = window.location.pathname.split("/").pop(); // fallback for non-router files
-const socket = io('http://localhost:4000', {
+const socket = io('https://smart-brainstorm-app-1.onrender.com/', {
   query: { roomId }
 });
 
