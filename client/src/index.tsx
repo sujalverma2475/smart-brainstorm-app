@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom'; // ✅ Switched to HashRouter
 import Home from './home'; // ✅ Import Home page for room creation/joining
 
 const root = ReactDOM.createRoot(
@@ -12,7 +12,7 @@ const root = ReactDOM.createRoot(
 
 root.render(
   <React.StrictMode>
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         {/* Route for home (room creation & join UI) */}
         <Route path="/" element={<Home />} />
@@ -23,7 +23,7 @@ root.render(
         {/* Optional fallback for unknown routes */}
         <Route path="*" element={<Home />} />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   </React.StrictMode>
 );
 
