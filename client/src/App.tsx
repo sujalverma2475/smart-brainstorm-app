@@ -2,10 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import StickyNote from './components/StickyNote';
 import { DndContext } from '@dnd-kit/core';
 import { v4 as uuidv4 } from 'uuid';
-import socket from './socket'; // ✅ Added for real-time sync
-import { useParams } from 'react-router-dom'; // ✅ Room support
-
-
+import socket from './socket';
+import { useParams } from 'react-router-dom';
 
 interface Note {
   id: string;
@@ -20,13 +18,13 @@ const App: React.FC = () => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [showWhiteboard, setShowWhiteboard] = useState(false);
   const [copied, setCopied] = useState(false);
-
+  const [toolColor, setToolColor] = useState<string>('#000');
+  const [toolSize, setToolSize] = useState<number>(2);
+  const [isEraser, setIsEraser] = useState(false); // ✅ Eraser state
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawing = useRef(false);
   const lastPosition = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [toolColor, setToolColor] = useState<string>('#000');
-  const [toolSize, setToolSize] = useState<number>(2);
 
   const [username] = useState<string>(() => {
     const stored = localStorage.getItem('username');
@@ -43,12 +41,6 @@ const App: React.FC = () => {
     const hue = hash % 360;
     return `hsl(${hue}, 80%, 85%)`;
   };
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(window.location.href);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
 
   const ensureColorForUser = (name: string) => {
     setUserColors((prev) => {
@@ -62,6 +54,12 @@ const App: React.FC = () => {
       socket.emit('join-room', roomId);
     }
   }, [roomId]);
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handleAddNote = () => {
     ensureColorForUser(username);
@@ -154,7 +152,7 @@ const App: React.FC = () => {
     lastPosition.current = { x, y };
     const ctx = canvasRef.current?.getContext('2d');
     if (ctx) {
-      ctx.strokeStyle = toolColor;
+      ctx.strokeStyle = isEraser ? 'white' : toolColor;
       ctx.lineWidth = toolSize;
       ctx.beginPath();
       ctx.moveTo(x, y);
@@ -172,7 +170,7 @@ const App: React.FC = () => {
       socket.emit('draw-line', {
         from: lastPosition.current,
         to: { x, y },
-        color: toolColor,
+        color: isEraser ? 'white' : toolColor,
         size: toolSize,
       });
       lastPosition.current = { x, y };
@@ -206,89 +204,35 @@ const App: React.FC = () => {
           borderRadius: '0.5rem',
         }}
       >
-        <button
-          onClick={handleCopyLink}
-          style={{
-            padding: '0.5rem 1rem',
-            fontSize: '1rem',
-            borderRadius: '0.5rem',
-            backgroundColor: '#6366f1', // Indigo
-            color: 'white',
-            border: 'none',
-            cursor: 'pointer',
-          }}
-        >
+        <button onClick={handleCopyLink} style={{ padding: '0.5rem 1rem', fontSize: '1rem', borderRadius: '0.5rem', backgroundColor: '#6366f1', color: 'white', border: 'none', cursor: 'pointer' }}>
           Copy Room Link
         </button>
 
-        {copied && (
-          <span style={{ color: '#16a34a', fontWeight: 500 }}>
-            ✅ Link Copied!
-          </span>
-        )}
+        {copied && <span style={{ color: '#16a34a', fontWeight: 500 }}>✅ Link Copied!</span>}
 
-        <button
-          onClick={handleAddNote}
-          style={{
-            padding: '0.5rem 1rem',
-            fontSize: '1rem',
-            borderRadius: '0.5rem',
-            backgroundColor: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            cursor: 'pointer',
-          }}
-        >
+        <button onClick={handleAddNote} style={{ padding: '0.5rem 1rem', fontSize: '1rem', borderRadius: '0.5rem', backgroundColor: '#3b82f6', color: 'white', border: 'none', cursor: 'pointer' }}>
           Add Note
         </button>
 
         {!showWhiteboard ? (
-          <button
-            onClick={() => setShowWhiteboard(true)}
-            style={{
-              padding: '0.5rem 1rem',
-              fontSize: '1rem',
-              borderRadius: '0.5rem',
-              backgroundColor: '#10b981',
-              color: 'white',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
+          <button onClick={() => setShowWhiteboard(true)} style={{ padding: '0.5rem 1rem', fontSize: '1rem', borderRadius: '0.5rem', backgroundColor: '#10b981', color: 'white', border: 'none', cursor: 'pointer' }}>
             Show Whiteboard
           </button>
-          
         ) : (
           <>
-            <button
-              onClick={() => setShowWhiteboard(false)}
-              style={{
-                padding: '0.5rem 1rem',
-                fontSize: '1rem',
-                borderRadius: '0.5rem',
-                backgroundColor: '#dc2626',
-                color: 'white',
-                border: 'none',
-                cursor: 'pointer',
-              }}
-            >
+            <button onClick={() => setShowWhiteboard(false)} style={{ padding: '0.5rem 1rem', fontSize: '1rem', borderRadius: '0.5rem', backgroundColor: '#dc2626', color: 'white', border: 'none', cursor: 'pointer' }}>
               Remove Whiteboard
             </button>
-            
+
             <label>🖍️ Color:</label>
-            <input
-              type="color"
-              value={toolColor}
-              onChange={(e) => setToolColor(e.target.value)}
-            />
+            <input type="color" value={toolColor} onChange={(e) => setToolColor(e.target.value)} />
+
             <label>✏️ Size:</label>
-            <input
-              type="range"
-              min={1}
-              max={10}
-              value={toolSize}
-              onChange={(e) => setToolSize(Number(e.target.value))}
-            />
+            <input type="range" min={1} max={10} value={toolSize} onChange={(e) => setToolSize(Number(e.target.value))} />
+
+            <button onClick={() => setIsEraser((prev) => !prev)} style={{ padding: '0.5rem 1rem', borderRadius: '0.5rem', backgroundColor: isEraser ? '#f97316' : '#e5e7eb', color: isEraser ? 'white' : '#000', border: 'none', cursor: 'pointer' }}>
+              {isEraser ? '🧽 Erasing' : '🧼 Eraser'}
+            </button>
           </>
         )}
       </div>
@@ -300,13 +244,7 @@ const App: React.FC = () => {
           onMouseMove={draw}
           onMouseUp={stopDraw}
           onMouseLeave={stopDraw}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            zIndex: 0,
-            background: 'white',
-          }}
+          style={{ position: 'absolute', top: 0, left: 0, zIndex: 0, background: 'white' }}
         />
       )}
 
